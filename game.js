@@ -416,6 +416,11 @@ class Game {
                     this.sounds.kick.play().catch(() => { });
                 }
 
+                // BALL TRUST: If client hits the ball, take temporary ownership
+                if (!this.isHost && isLocal) {
+                    this.lastBallTouch = Date.now();
+                }
+
                 this.emitParticles(this.ball.x, this.ball.y, 'rgb(34, 139, 34)', 3);
             }
         }
@@ -631,9 +636,17 @@ class Game {
         }
 
         // Ball: On client, we let updatePhysics predict it, but gently reconcile with host state
+        // UNLESS we recently touched it (Ball Trust)
         if (!this.isHost && this.ball.targetX !== undefined) {
+            const timeSinceTouch = Date.now() - (this.lastBallTouch || 0);
+
+            // If we kicked the ball < 400ms ago, TRUST LOCAL PHYSICS. Ignore server.
+            if (timeSinceTouch < 400) {
+                return;
+            }
+
             const dist = Math.sqrt((this.ball.x - this.ball.targetX) ** 2 + (this.ball.y - this.ball.targetY) ** 2);
-            if (dist > 50) {
+            if (dist > 150) { // Increased snap distance for ball too
                 // Snap if too far
                 this.ball.x = this.ball.targetX;
                 this.ball.y = this.ball.targetY;
