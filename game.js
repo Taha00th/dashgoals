@@ -417,7 +417,9 @@ class Game {
                 }
 
                 // BALL TRUST: If client hits the ball, take temporary ownership
-                if (!this.isHost && isLocal) {
+                // Fix: Define isLocal based on player ID
+                const isLocalPlayer = (!this.isHost && keys[i] === 'peer_blue');
+                if (isLocalPlayer) {
                     this.lastBallTouch = Date.now();
                 }
 
