@@ -322,11 +322,8 @@ class Game {
     }
 
     updatePhysics() {
-        // If match isn't active, only host (or AI match) can override
-        if (!this.matchActive && this.isHost) return;
-
         // Run AI if active
-        if (this.aiActive && this.isHost) {
+        if (this.aiActive && this.isHost && this.matchActive) {
             this.updateAI();
         }
 
@@ -566,12 +563,15 @@ class Game {
                 const isLocal = (this.isHost && id === 'peer_host') || (!this.isHost && id === 'peer_blue');
 
                 if (isLocal) {
-                    // Reconciliation: If local prediction is too far, snap it
+                    // Reconciliation: If local prediction is too far (e.g. latency spike), snap it
                     const dist = Math.sqrt((p.x - s.x) ** 2 + (p.y - s.y) ** 2);
-                    if (dist > 40) {
+                    if (dist > 80) { // Increased tolerance for high latency
                         p.x = s.x;
                         p.y = s.y;
                     }
+                    // Sync velocity to maintain momentum/collisions from host
+                    p.vx = s.vx;
+                    p.vy = s.vy;
                 } else {
                     // Non-local: Set targets for interpolation
                     p.targetX = s.x;
