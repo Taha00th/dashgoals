@@ -127,6 +127,10 @@ class Game {
 
         if (!this.isHost) {
             sendInput(this.keys);
+            // Local prediction for client character
+            if (this.players['peer_blue']) {
+                this.players['peer_blue'].inputs = { ...this.keys };
+            }
         }
     }
 
@@ -309,7 +313,7 @@ class Game {
     startHostLoop() {
         if (!this.isHost) return;
         setInterval(() => this.updatePhysics(), 1000 / 60);
-        setInterval(() => this.broadcastState(), 20); // 50 Hz
+        setInterval(() => this.broadcastState(), 40); // 25 Hz is enough with interpolation
         this.renderLoop();
     }
 
@@ -318,6 +322,7 @@ class Game {
     }
 
     updatePhysics() {
+        // If match isn't active, only host (or AI match) can override
         if (!this.matchActive && this.isHost) return;
 
         // Run AI if active
@@ -325,8 +330,10 @@ class Game {
             this.updateAI();
         }
 
-        if (this.players['peer_host']) {
-            this.players['peer_host'].inputs = this.keys;
+        // Apply local inputs
+        const myId = this.isHost ? 'peer_host' : 'peer_blue';
+        if (this.players[myId]) {
+            this.players[myId].inputs = this.keys;
         }
 
         // Move Players & Collision
@@ -523,12 +530,16 @@ class Game {
             ball: this.ball,
             scores: this.scores,
             matchTime: this.matchTime,
+            matchActive: this.matchActive,
             matchEnded: this.matchEnded
         });
     }
 
     // --- CLIENT LOGIC ---
     startClientLoop() {
+        if (this.isHost) return;
+        // Run local physics for prediction
+        setInterval(() => this.updatePhysics(), 1000 / 60);
         this.renderLoop();
     }
 
@@ -539,26 +550,36 @@ class Game {
             this.triggerGoalAnimation();
         }
 
-        // Ball Sync
-        if (!this.ball.targetX) {
-            this.ball.x = state.ball.x;
-            this.ball.y = state.ball.y;
-        }
+        // Ball Sync (Interpolated)
         this.ball.targetX = state.ball.x;
         this.ball.targetY = state.ball.y;
+        this.ball.vx = state.ball.vx; // Keep velocity for better prediction
+        this.ball.vy = state.ball.vy;
 
         // Player Sync
         for (let id in state.players) {
+            const s = state.players[id];
             if (!this.players[id]) {
-                this.players[id] = state.players[id];
+                this.players[id] = { ...s };
             } else {
-                let p = this.players[id];
-                let s = state.players[id];
-                if (Math.abs(p.x - s.x) > 100) {
-                    p.x = s.x; p.y = s.y;
+                const p = this.players[id];
+                const isLocal = (this.isHost && id === 'peer_host') || (!this.isHost && id === 'peer_blue');
+
+                if (isLocal) {
+                    // Reconciliation: If local prediction is too far, snap it
+                    const dist = Math.sqrt((p.x - s.x) ** 2 + (p.y - s.y) ** 2);
+                    if (dist > 40) {
+                        p.x = s.x;
+                        p.y = s.y;
+                    }
+                } else {
+                    // Non-local: Set targets for interpolation
+                    p.targetX = s.x;
+                    p.targetY = s.y;
+                    p.vx = s.vx;
+                    p.vy = s.vy;
                 }
-                p.targetX = s.x;
-                p.targetY = s.y;
+
                 p.name = s.name;
                 p.kitColor = s.kitColor;
                 p.inputs = s.inputs;
@@ -570,13 +591,15 @@ class Game {
             this.matchTime = state.matchTime;
         }
 
-        this.updateUIDom();
-
-        // Match End Sync
+        // Match State Sync
+        this.matchActive = !!state.matchActive;
         if (state.matchEnded && !this.matchEnded) {
             this.matchEnded = true;
             this.triggerStatsOverlay();
         }
+        this.matchEnded = !!state.matchEnded;
+
+        this.updateUIDom();
     }
 
     renderLoop() {
@@ -586,19 +609,32 @@ class Game {
     }
 
     interpolateEntities() {
-        const factor = 0.12;
+        const factor = 0.15;
         const lerp = (a, b, f) => a + (b - a) * f;
 
         for (let id in this.players) {
-            let p = this.players[id];
-            if (p.targetX !== undefined) {
+            const p = this.players[id];
+            const isLocal = (!this.isHost && id === 'peer_blue');
+
+            // We only interpolate OTHER players. Local player is handled by updatePhysics + reconciliation.
+            if (!isLocal && p.targetX !== undefined) {
                 p.x = lerp(p.x, p.targetX, factor);
                 p.y = lerp(p.y, p.targetY, factor);
             }
         }
-        if (this.ball.targetX !== undefined) {
-            this.ball.x = lerp(this.ball.x, this.ball.targetX, factor);
-            this.ball.y = lerp(this.ball.y, this.ball.targetY, factor);
+
+        // Ball: On client, we let updatePhysics predict it, but gently reconcile with host state
+        if (!this.isHost && this.ball.targetX !== undefined) {
+            const dist = Math.sqrt((this.ball.x - this.ball.targetX) ** 2 + (this.ball.y - this.ball.targetY) ** 2);
+            if (dist > 50) {
+                // Snap if too far
+                this.ball.x = this.ball.targetX;
+                this.ball.y = this.ball.targetY;
+            } else {
+                // Gentle pull towards authority
+                this.ball.x = lerp(this.ball.x, this.ball.targetX, 0.1);
+                this.ball.y = lerp(this.ball.y, this.ball.targetY, 0.1);
+            }
         }
     }
 
