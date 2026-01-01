@@ -563,15 +563,22 @@ class Game {
                 const isLocal = (this.isHost && id === 'peer_host') || (!this.isHost && id === 'peer_blue');
 
                 if (isLocal) {
-                    // Reconciliation: If local prediction is too far (e.g. latency spike), snap it
+                    // Reconciliation
                     const dist = Math.sqrt((p.x - s.x) ** 2 + (p.y - s.y) ** 2);
-                    if (dist > 80) { // Increased tolerance for high latency
+
+                    if (dist > 150) {
+                        // Hard Snap for large desync (teleport/lag spike)
                         p.x = s.x;
                         p.y = s.y;
+                    } else if (dist > 20) {
+                        // Soft Correction: Nudge towards server state (10%)
+                        p.x += (s.x - p.x) * 0.1;
+                        p.y += (s.y - p.y) * 0.1;
                     }
-                    // Sync velocity to maintain momentum/collisions from host
-                    p.vx = s.vx;
-                    p.vy = s.vy;
+
+                    // IMPORTANT: Do NOT sync velocity here. 
+                    // Overwriting local velocity with server's delayed velocity causes rubberbanding.
+                    // We trust local input prediction for velocity.
                 } else {
                     // Non-local: Set targets for interpolation
                     p.targetX = s.x;
