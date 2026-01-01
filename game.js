@@ -427,35 +427,39 @@ class Game {
             }
         }
 
-        // Move Ball
-        this.ball.x += this.ball.vx;
-        this.ball.y += this.ball.vy;
-        this.ball.vx *= this.friction;
-        this.ball.vy *= this.friction;
+        // === BALL PHYSICS (HOST ONLY) ===
+        // Clients receive ball position from server, they don't simulate it
+        if (this.isHost) {
+            // Move Ball
+            this.ball.x += this.ball.vx;
+            this.ball.y += this.ball.vy;
+            this.ball.vx *= this.friction;
+            this.ball.vy *= this.friction;
 
-        // Ball Boundaries & Goals
-        if (this.ball.y < this.ball.radius + 10 || this.ball.y > this.height - this.ball.radius - 10) {
-            if (Math.abs(this.ball.vy) > 0.5) {
-                this.sounds.post.currentTime = 0;
-                this.sounds.post.play().catch(() => { });
+            // Ball Boundaries & Goals
+            if (this.ball.y < this.ball.radius + 10 || this.ball.y > this.height - this.ball.radius - 10) {
+                if (Math.abs(this.ball.vy) > 0.5) {
+                    this.sounds.post.currentTime = 0;
+                    this.sounds.post.play().catch(() => { });
+                }
+                this.ball.vy *= -1;
+                this.ball.y = Math.max(this.ball.radius + 10, Math.min(this.height - this.ball.radius - 10, this.ball.y));
             }
-            this.ball.vy *= -1;
-            this.ball.y = Math.max(this.ball.radius + 10, Math.min(this.height - this.ball.radius - 10, this.ball.y));
-        }
 
-        if (this.ball.x < this.ball.radius + 2) {
-            if (this.ball.y > 170 && this.ball.y < 310) {
-                this.score('blue');
-            } else {
-                this.ball.vx *= -1;
-                this.ball.x = this.ball.radius + 2;
-            }
-        } else if (this.ball.x > this.width - this.ball.radius - 2) {
-            if (this.ball.y > 170 && this.ball.y < 310) {
-                this.score('red');
-            } else {
-                this.ball.vx *= -1;
-                this.ball.x = this.width - this.ball.radius - 2;
+            if (this.ball.x < this.ball.radius + 2) {
+                if (this.ball.y > 170 && this.ball.y < 310) {
+                    this.score('blue');
+                } else {
+                    this.ball.vx *= -1;
+                    this.ball.x = this.ball.radius + 2;
+                }
+            } else if (this.ball.x > this.width - this.ball.radius - 2) {
+                if (this.ball.y > 170 && this.ball.y < 310) {
+                    this.score('red');
+                } else {
+                    this.ball.vx *= -1;
+                    this.ball.x = this.width - this.ball.radius - 2;
+                }
             }
         }
 
@@ -637,26 +641,10 @@ class Game {
             }
         }
 
-        // Ball: On client, we let updatePhysics predict it, but gently reconcile with host state
-        // UNLESS we recently touched it (Ball Trust)
+        // Ball: Always interpolate on client (no prediction)
         if (!this.isHost && this.ball.targetX !== undefined) {
-            const timeSinceTouch = Date.now() - (this.lastBallTouch || 0);
-
-            // If we kicked the ball < 400ms ago, TRUST LOCAL PHYSICS. Ignore server.
-            if (timeSinceTouch < 400) {
-                return;
-            }
-
-            const dist = Math.sqrt((this.ball.x - this.ball.targetX) ** 2 + (this.ball.y - this.ball.targetY) ** 2);
-            if (dist > 150) { // Increased snap distance for ball too
-                // Snap if too far
-                this.ball.x = this.ball.targetX;
-                this.ball.y = this.ball.targetY;
-            } else {
-                // Gentle pull towards authority
-                this.ball.x = lerp(this.ball.x, this.ball.targetX, 0.1);
-                this.ball.y = lerp(this.ball.y, this.ball.targetY, 0.1);
-            }
+            this.ball.x = lerp(this.ball.x, this.ball.targetX, 0.2);
+            this.ball.y = lerp(this.ball.y, this.ball.targetY, 0.2);
         }
     }
 
