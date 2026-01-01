@@ -313,7 +313,7 @@ class Game {
     startHostLoop() {
         if (!this.isHost) return;
         setInterval(() => this.updatePhysics(), 1000 / 60);
-        setInterval(() => this.broadcastState(), 40); // 25 Hz is enough with interpolation
+        setInterval(() => this.broadcastState(), 30); // 33 Hz for smoother updates
         this.renderLoop();
     }
 
