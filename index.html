@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="tr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dash Goal</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.socket.io/4.6.1/socket.io.min.js"></script>
+</head>
+
+<body>
+    <div id="bg-overlay"></div>
+
+    <div id="ui-layer">
+
+        <!-- 1. LANDING PAGE (HaxBall Style) -->
+        <div id="landing-page" class="fade-in">
+            <!-- Logo Section -->
+            <div class="logo-container">
+                <h1 class="game-logo">Dash<span class="logo-highlight">Goal</span></h1>
+                <div class="logo-icon">⚽</div>
+            </div>
+
+            <!-- Central Modal Box -->
+            <div class="intro-box scale-in">
+                <p class="intro-text">
+                    Dash Goal, takım oyununun ve yeteneğin konuştuğu<br>fizik tabanlı bir 2D futbol oyunudur.
+                </p>
+                <button id="btn-play-game" class="btn-play-main">ŞİMDİ OYNA!</button>
+                <button onclick="document.getElementById('leaderboard-modal').classList.remove('hidden')"
+                    class="btn secondary-gradient" style="margin-top: 20px;">LİDERLİK TABLOSU</button>
+            </div>
+
+            <div class="footer-links">
+                <span>v1.0.0</span> • <span>Multiplayer Online</span>
+            </div>
+        </div>
+
+        <!-- 2. MAIN MENU (Room Setup) - Hidden Initially -->
+        <!-- 2. MAIN MENU (Room Setup) - Hidden Initially -->
+        <div id="menu-container" class="glass-panel wide hidden scale-in">
+            <h2 class="menu-title">LOBİ KURULUMU</h2>
+
+            <!-- Main Menu Section -->
+            <div id="main-menu">
+                <div class="lobby-grid">
+                    <!-- Left: Profile & Settings -->
+                    <div class="grid-left">
+                        <h4 class="grid-section-title">PROFİL & AYARLAR</h4>
+
+                        <div class="input-group" style="margin-bottom: 15px;">
+                            <label>Oyuncu Adı</label>
+                            <input type="text" id="username-input" placeholder="Nickinizi girin" value="Oyuncu 1">
+                        </div>
+
+                        <div class="customization-area" style="padding: 10px; margin-bottom: 15px;">
+                            <label style="font-size: 0.9rem; opacity: 0.7;">Forma & Avatar</label>
+                            <div class="kit-selector">
+                                <input type="color" id="kit-color-input" value="#ff4d4d">
+                                <div id="kit-preview"
+                                    style="width: 36px; height: 36px; border-radius: 50%; border: 2px solid white; background: #ff4d4d; margin-left:10px; overflow: hidden; display: flex; align-items: center; justify-content: center;">
+                                    <img id="avatar-preview" src=""
+                                        style="width: 100%; height: 100%; object-fit: cover; display: none;">
+                                </div>
+                                <label for="avatar-input" class="btn"
+                                    style="width: auto; margin-left: 10px; padding: 4px 8px; font-size: 0.7rem; background: rgba(255,255,255,0.1);">DEĞİŞTİR</label>
+                                <input type="file" id="avatar-input" accept="image/*" style="display: none;">
+                            </div>
+                        </div>
+
+                        <div class="room-settings-group" style="display: flex; gap: 10px;">
+                            <div style="flex: 1;">
+                                <label style="font-size: 0.8rem; opacity: 0.7;">Maç Süresi</label>
+                                <select id="match-duration-select" class="btn"
+                                    style="background: rgba(255,255,255,0.05); color: white; border: 1px solid rgba(255,255,255,0.1); padding: 8px; font-size: 0.8rem;">
+                                    <option value="120">2 Dakika</option>
+                                    <option value="300">5 Dakika</option>
+                                    <option value="600">10 Dakika</option>
+                                </select>
+                            </div>
+                            <div style="flex: 1;">
+                                <label style="font-size: 0.8rem; opacity: 0.7;">Sunucu</label>
+                                <select id="server-select" class="btn"
+                                    style="background: rgba(255,255,255,0.05); color: #2ecc71; border: 1px solid rgba(255,255,255,0.1); padding: 8px; font-size: 0.8rem;">
+                                    <option value="local">Yerel (Hızlı)</option>
+                                    <option value="online">Online (Arkadaşlarla)</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div style="margin-bottom: 15px;">
+                            <label style="font-size: 0.8rem; opacity: 0.7;">Oda Şifresi</label>
+                            <input type="text" id="room-password-input" placeholder="İsteğe bağlı"
+                                style="padding: 8px; font-size: 0.8rem;">
+                        </div>
+                    </div>
+
+                    <!-- Right: Room Browser -->
+                    <div class="grid-right">
+                        <h4 class="grid-section-title">AKTİF LOBİLER</h4>
+                        <div id="room-browser" class="room-browser-container">
+                            <div
+                                style="padding: 20px; color: rgba(255,255,255,0.3); font-size: 0.9rem; text-align: center;">
+                                Oda aranıyor...</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Bottom: Action Bar -->
+                <div class="action-bar">
+                    <button id="btn-create" class="btn primary-gradient" style="flex: 1;">ODA OLUŞTUR</button>
+
+                    <div class="join-group">
+                        <input type="text" id="room-id-input" placeholder="Oda Kodu" style="flex: 1;">
+                        <input type="password" id="join-password-input" placeholder="Şifre" style="width: 100px;">
+                        <button id="btn-join" class="btn primary-gradient" style="flex: 0 0 100px;">KATIL</button>
+                    </div>
+
+                    <button id="btn-play-ai" class="btn" style="background: #f39c12; color: white; flex: 1;">YAPAY
+                        ZEKA</button>
+                </div>
+            </div>
+
+            <!-- Lobby / Waiting Section (Hidden) -->
+            <div id="lobby-screen" class="hidden">
+                <div class="lobby-header">
+                    <h3>ODAN HAZIR</h3>
+                    <button id="btn-close-lobby" class="btn-icon">✕</button>
+                </div>
+
+                <div class="code-box">
+                    <p>Davet Kodu</p>
+                    <div class="code-display">
+                        <code id="display-room-id">...</code>
+                        <button class="btn-copy"
+                            onclick="navigator.clipboard.writeText(document.getElementById('display-room-id').innerText)">KOPYALA</button>
+                    </div>
+                </div>
+
+                <div id="status-message" class="pulsing-text">Oyuncu Bekleniyor...</div>
+            </div>
+        </div>
+
+        <!-- 3. GAME UI -->
+        <div id="game-ui" class="hidden">
+            <div id="timer-display">2:00</div>
+            <div id="score-board">
+                <span id="score-red">0</span> : <span id="score-blue">0</span>
+            </div>
+            <div id="goal-overlay" class="hidden">
+                <h1 class="goal-text">GOOOOOL!</h1>
+                <div id="announcer-subtext">MUHTEŞEM BİR VURUŞ!</div>
+            </div>
+
+            <!-- Chat System -->
+            <div id="chat-system">
+                <div id="chat-messages"></div>
+                <div id="chat-input-area">
+                    <input type="text" id="chat-input" placeholder="Mesaj yaz..." maxlength="100">
+                    <button id="btn-send-chat">GÖNDER</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 5. MATCH STATS MODAL -->
+        <div id="stats-modal" class="glass-panel hidden scale-in" style="z-index: 2000;">
+            <h2 class="menu-title">MAÇ SONUCU</h2>
+            <h1 id="match-winner" style="color: #f1c40f; margin-bottom: 20px;">KIRMIZI KAZANDI!</h1>
+
+            <div class="stats-grid"
+                style="display: flex; justify-content: space-around; margin-bottom: 30px; font-size: 2rem; font-weight: 900;">
+                <div style="color: #ff4d4d; border-bottom: 4px solid #ff4d4d; padding-bottom: 5px;">
+                    RED: <span id="final-score-red">0</span>
+                </div>
+                <div style="color: #4d94ff; border-bottom: 4px solid #4d94ff; padding-bottom: 5px;">
+                    BLUE: <span id="final-score-blue">0</span>
+                </div>
+            </div>
+
+            <button onclick="location.reload()" class="btn primary-gradient">YENİ MAÇ</button>
+        </div>
+
+        <!-- 6. GENERIC NOTIFICATION MODAL -->
+        <div id="notification-modal" class="glass-panel hidden scale-in"
+            style="z-index: 3000; width: 300px; padding: 1.5rem;">
+            <p id="notification-text" style="font-size: 1.2rem; margin-bottom: 20px; font-weight: bold;"></p>
+            <button id="btn-close-notification" class="btn primary-gradient">TAMAM</button>
+        </div>
+
+        <!-- 4. MOBILE CONTROLS -->
+        <div id="mobile-controls" class="hidden">
+            <div id="joystick-container">
+                <div id="joystick-base">
+                    <div id="joystick-knob"></div>
+                </div>
+            </div>
+            <button id="btn-kick-mobile">ŞUT</button>
+        </div>
+
+        <!-- 6. LEADERBOARD MODAL -->
+        <div id="leaderboard-modal" class="glass-panel hidden scale-in"
+            style="z-index: 2100; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);">
+            <h2 class="menu-title">LİDERLİK TABLOSU</h2>
+            <div id="leaderboard-list" style="margin: 20px 0; max-height: 250px; overflow-y: auto;">
+                <!-- Goals will be listed here -->
+            </div>
+            <button onclick="document.getElementById('leaderboard-modal').classList.add('hidden')"
+                class="btn secondary-gradient">KAPAT</button>
+        </div>
+    </div>
+
+    <canvas id="gameCanvas"></canvas>
+
+    <div id="debug-console"
+        style="position:fixed; bottom:0; right:0; background:rgba(0,0,0,0.8); color:lime; font-family:monospace; padding:10px; max-height:200px; overflow-y:auto; z-index:9999; width:300px; font-size:12px; pointer-events:none;">
+        System Ready...
+    </div>
+
+    <script src="network.js"></script>
+    <script src="game.js"></script>
+</body>
+
+</html>
