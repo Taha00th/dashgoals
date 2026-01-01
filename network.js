@@ -54,6 +54,17 @@ function setupSocketEvents() {
             btn.innerText = "ODA OLUŞTUR";
             btn.style.opacity = "1";
         }
+
+        // Auto-Rejoin if we were in a room (Handle Reconnection)
+        if (roomCode && gameStarted) {
+            console.log('Attempting to re-join previous room:', roomCode);
+            const myName = document.getElementById('username-input').value || (isHost ? "Host" : "Oyuncu");
+            const myKit = document.getElementById('kit-color-input').value;
+            // Re-emit join to restore socket.roomCode on server
+            socket.emit('join-room', { roomCode, playerName: myName, kitColor: myKit }, (res) => {
+                if (res.success) console.log('Re-joined room successfully');
+            });
+        }
     });
 
     socket.on('connect_error', (err) => {
@@ -322,7 +333,12 @@ function startAIMatch() {
 
 // Network Export for game.js
 function sendInput(inputData) {
-    if (socket && socket.connected && !isHost && !isSpectator) socket.emit('send-input', inputData);
+    if (socket && socket.connected && !isHost && !isSpectator) {
+        socket.emit('send-input', {
+            input: inputData,
+            roomCode: roomCode
+        });
+    }
 }
 
 function sendState(stateData) {
